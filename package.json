@@ -1,0 +1,28 @@
+{
+    "name": "async-queue-api",
+    "version": "1.0.0",
+    "description": "Simple API with database and message queue for DevOps learning",
+    "main": "src/api/server.js",
+    "scripts": {
+        "start": "node src/api/server.js",
+        "worker": "node src/worker/index.js",
+        "dev": "nodemon src/api/server.js"
+    },
+    "keywords": [
+        "nodejs",
+        "api",
+        "queue",
+        "worker"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "express": "^4.18.2",
+        "dotenv": "^16.0.3",
+        "pg": "^8.10.0",
+        "amqplib": "^0.10.3"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.20"
+    }
+}
