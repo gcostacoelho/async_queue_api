@@ -22,6 +22,7 @@ jobs:
   # Step de teste aqui (criar dps na aplicação)
 
   deploy-image:
+    needs: build-app
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -40,9 +41,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push image
-        uses: docker/build-and-push@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: ${{ matrix.target }}
-          tags: "${{secrets.DOCKERHUB_USERNAME}}/async-queue:${{ matrix.target }}"
+          tags: "${{secrets.DOCKERHUB_USERNAME}}/async-queue-${{ matrix.target }}"
           push: true
