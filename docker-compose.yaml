@@ -1,0 +1,118 @@
+services:
+  api:
+    container_name: api
+    restart: unless-stopped
+    build:
+      context: .
+      target: api
+    image: async_queue:api
+    ports:
+      - 3000:3000
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=async_queue_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - RABBITMQ_HOST=rabbit
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASSWORD=pass
+      - RABBITMQ_QUEUE=tasks
+      - API_PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app
+  
+  worker:
+    container_name: worker
+    restart: unless-stopped
+    build:
+      context: .
+      target: worker
+    image: async_queue:worker
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=async_queue_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - RABBITMQ_HOST=rabbit
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASSWORD=pass
+      - RABBITMQ_QUEUE=tasks
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+    networks:
+      - app
+
+  # DB AND RABBITMQ
+  db:
+    container_name: postgres_container
+    image: postgres:18.3-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: async_queue_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app
+  
+  rabbit:
+    container_name: rabbit_container
+    image: rabbitmq:4.3.0-management-alpine
+    restart: unless-stopped
+    ports:
+      - 5672:5672   # AMQP
+      - 15672:15672 # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - ./confs/rabbit/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./confs/rabbit/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - app
+  
+  adminer:
+    container_name: adminer_container
+    restart: unless-stopped
+    image: adminer:latest
+    ports:
+      - 8080:8080
+    networks:
+      - app
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+networks:
+  app:
