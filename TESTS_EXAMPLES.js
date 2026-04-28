@@ -1,9 +1,9 @@
 /**
  * Exemplos de Testes (NÃO ESTÁ IMPLEMENTADO)
- * 
+ *
  * Este arquivo mostra como você poderia estruturar testes
  * para a aplicação usando Jest e Supertest.
- * 
+ *
  * Para usar, instale:
  * npm install --save-dev jest supertest @testing-library/node
  */
@@ -18,7 +18,7 @@ const app = require('../src/api/server');
 const db = require('../src/db');
 
 describe('API Routes', () => {
-  
+
   beforeAll(async () => {
     await db.initializeDatabase();
   });
@@ -109,7 +109,7 @@ const Task = require('../../src/models/Task');
 const db = require('../../src/db');
 
 describe('Task Model', () => {
-  
+
   beforeAll(async () => {
     await db.initializeDatabase();
   });
@@ -126,7 +126,7 @@ describe('Task Model', () => {
   describe('create', () => {
     it('should create a task', async () => {
       const task = await Task.create('Test Title', 'Test Description');
-      
+
       expect(task.id).toBeDefined();
       expect(task.title).toBe('Test Title');
       expect(task.status).toBe('pending');
@@ -137,7 +137,7 @@ describe('Task Model', () => {
     it('should find a task by id', async () => {
       const created = await Task.create('Find me', 'Description');
       const found = await Task.findById(created.id);
-      
+
       expect(found.id).toBe(created.id);
       expect(found.title).toBe('Find me');
     });
@@ -152,7 +152,7 @@ describe('Task Model', () => {
     it('should return all tasks', async () => {
       await Task.create('Task 1', 'Desc 1');
       await Task.create('Task 2', 'Desc 2');
-      
+
       const tasks = await Task.findAll();
       expect(tasks.length).toBe(2);
     });
@@ -162,7 +162,7 @@ describe('Task Model', () => {
     it('should update task status', async () => {
       const task = await Task.create('Update me');
       const updated = await Task.updateStatus(task.id, 'processed');
-      
+
       expect(updated.status).toBe('processed');
     });
   });
@@ -171,7 +171,7 @@ describe('Task Model', () => {
     it('should mark task as processed', async () => {
       const task = await Task.create('Process me');
       const processed = await Task.markAsProcessed(task.id);
-      
+
       expect(processed.status).toBe('processed');
       expect(processed.processed_at).toBeDefined();
     });
@@ -188,9 +188,9 @@ const queue = require('../../src/queue');
 const amqp = require('amqplib');
 
 describe('Queue Module', () => {
-  
+
   let connection;
-  
+
   beforeAll(async () => {
     await queue.connectQueue();
   });
@@ -210,7 +210,7 @@ describe('Queue Module', () => {
     it('should publish a message', async () => {
       const message = { taskId: 1, title: 'Test' };
       const result = await queue.publishMessage(message);
-      
+
       expect(result).toBe(true);
     });
   });
@@ -249,7 +249,7 @@ const Task = require('../src/models/Task');
 const queue = require('../src/queue');
 
 describe('Integration Tests', () => {
-  
+
   beforeAll(async () => {
     await db.initializeDatabase();
     await queue.connectQueue();
@@ -327,8 +327,8 @@ describe('Integration Tests', () => {
 3. Criar arquivo jest.config.js:
    module.exports = {
      testEnvironment: 'node',
-     collectCoverageFrom: ['src/**/*.js'],
-testMatch: ['**/__tests__/**/*.js', '**/tests/**/*.js', '**/*.test.js']
+     collectCoverageFrom: ['src/**\/*.js'],
+testMatch: ['**\/__tests__/**\/*.js', '**\/tests/**\/*.js', '**\/*.test.js']
    };
 
 4. Rodar testes:
@@ -336,8 +336,8 @@ testMatch: ['**/__tests__/**/*.js', '**/tests/**/*.js', '**/*.test.js']
 
 5. Ver cobertura:
    npm test-- --coverage
-    */
 
 module.exports = {
     message: 'Este arquivo contém exemplos de testes. Descomente as seções para usá-las.'
 };
+*/
