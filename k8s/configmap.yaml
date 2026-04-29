@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: async-queue-api-configmap
+data:
+  # DB_HOST: db - intern SVC URL
+  DB_PORT: "5432"
+  DB_NAME: async_queue_db
+  # RABBITMQ_HOST: rabbit - intern SVC URL
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_QUEUE: tasks
+  API_PORT: "3000"
+  NODE_ENV: development
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: async-queue-worker-configmap
+data:
+  DB_HOST: db # - intern SVC URL
+  DB_PORT: "5432"
+  DB_NAME: async_queue_db
+  RABBITMQ_HOST: rabbit # - intern SVC URL
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_QUEUE: tasks
