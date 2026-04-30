@@ -1,137 +1,99 @@
 # Async Queue API
 
-Uma API simples em Node.js que demonstra o padrão de arquitetura com requisições síncronas, persistência em banco de dados e processamento assíncrono via fila de mensagens.
+A Async Queue API é uma aplicação Node.js que implementa o padrão produtor-consumidor para processamento assíncrono de tarefas. A API recebe requisições HTTP, persiste dados em PostgreSQL e publica mensagens em RabbitMQ para processamento em background.
 
 ## Arquitetura
 
 ```
 ┌─────────────┐
-│   Client    │
+│   Cliente   │
 └──────┬──────┘
        │ HTTP
        ▼
-┌─────────────┐        ┌──────────────┐
-│  API Server │───────▶│  PostgreSQL  │
-└──────┬──────┘        └──────────────┘
-       │
-       │ Publish Message
-       ▼
-┌──────────────────┐
-│  RabbitMQ Queue  │
-└────────┬─────────┘
+┌──────────────────┐       ┌─────────────┐
+│   API Server     │──────▶│ PostgreSQL  │
+│   (port 3000)    │       │ (Storage)   │
+└────────┬─────────┘       └─────────────┘
          │
-         │ Consume Message
+         │ Publica
          ▼
 ┌──────────────────┐
-│  Worker Process  │
+│   RabbitMQ Queue │
+│  (tasks)         │
 └────────┬─────────┘
          │
+         │ Consome
          ▼
 ┌──────────────────┐
-│  Update Database │
-└──────────────────┘
+│   Worker        │
+│  (Processamento) │
+└────────┬─────────┘
+         │
+         │ Atualiza
+         ▼
+┌─────────────────┐
+│  PostgreSQL     │
+│ (Status)        │
+└─────────────────┘
 ```
 
 ## Componentes
 
-- **API Server**: Recebe requisições HTTP e grava as tarefas no banco
-- **Worker**: Consome mensagens da fila e processa as tarefas
-- **PostgreSQL**: Armazena as tarefas
-- **RabbitMQ**: Fila de mensagens para processamento assíncrono
+| Componente | Função |
+|-----------|--------|
+| **API Server** | Servidor Express que fornece endpoints HTTP |
+| **Worker** | Processo de consumo e processamento de tarefas |
+| **PostgreSQL** | Persistência de tarefas |
+| **RabbitMQ** | Fila de mensagens para processamento assíncrono |
 
-## Instalação
+## Execução
 
-1. Clone o repositório:
+### Com Docker Compose
 
 ```bash
-cd async_queue_api
+docker-compose up
 ```
 
-2. Instale as dependências:
+### Localmente
+
+Pré-requisitos: Node.js 22+, PostgreSQL 15+, RabbitMQ 3.12+
 
 ```bash
 npm install
-```
-
-3. Configure as variáveis de ambiente:
-
-```bash
 cp .env.example .env
-# Edite o arquivo .env com suas configurações
 ```
 
-## Configuração de Dependências
-
-Antes de executar, certifique-se de que possui:
-
-- **Node.js** (versão 14+)
-- **PostgreSQL** (versão 12+)
-- **RabbitMQ** (versão 3.8+)
-
-## Variáveis de Ambiente
-
-Configure o arquivo `.env`:
-
-```
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=async_queue_api
-DB_USER=postgres
-DB_PASSWORD=password
-
-# RabbitMQ
-RABBITMQ_HOST=localhost
-RABBITMQ_PORT=5672
-RABBITMQ_USER=guest
-RABBITMQ_PASSWORD=guest
-RABBITMQ_QUEUE=tasks
-
-# API
-API_PORT=3000
-NODE_ENV=development
-```
-
-## Executando a Aplicação
-
-### Terminal 1 - API Server
-
+Terminal 1:
 ```bash
 npm start
 ```
 
-A API estará disponível em `http://localhost:3000`
-
-### Terminal 2 - Worker
-
+Terminal 2:
 ```bash
 npm run worker
 ```
 
-## Endpoints da API
+## API Endpoints
 
 ### Health Check
-
-```bash
+```
 GET /api/health
 ```
 
-### Listar todas as tarefas
-
-```bash
+### Listar Tarefas
+```
 GET /api/tasks
 ```
 
-**Resposta:**
-
+Resposta:
 ```json
 {
   "success": true,
   "data": [
     {
       "id": 1,
-      "title": "Exemplo de Tarefa",
-      "description": "Descrição da tarefa",
+      "title": "Task Title",
+      "description": "Description",
       "status": "pending",
       "created_at": "2024-01-15T10:30:00.000Z",
       "updated_at": "2024-01-15T10:30:00.000Z",
@@ -141,126 +103,86 @@ GET /api/tasks
 }
 ```
 
-### Obter uma tarefa específica
-
-```bash
+### Obter Tarefa
+```
 GET /api/tasks/:id
 ```
 
-### Criar uma nova tarefa
-
-```bash
+### Criar Tarefa
+```
 POST /api/tasks
 Content-Type: application/json
 
 {
-  "title": "Minha Tarefa",
-  "description": "Descrição da tarefa (opcional)"
+  "title": "Task Title",
+  "description": "Optional"
 }
 ```
 
-**Resposta:**
-
-```json
-{
-  "success": true,
-  "message": "Task created and queued for processing",
-  "data": {
-    "id": 1,
-    "title": "Minha Tarefa",
-    "description": "Descrição da tarefa",
-    "status": "pending",
-    "created_at": "2024-01-15T10:30:00.000Z",
-    "updated_at": "2024-01-15T10:30:00.000Z",
-    "processed_at": null
-  }
-}
-```
-
-## Exemplo de Uso com cURL
-
-```bash
-# Health check
-curl http://localhost:3000/api/health
-
-# Listar tarefas
-curl http://localhost:3000/api/tasks
-
-# Criar tarefa
-curl -X POST http://localhost:3000/api/tasks \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Processar Pagamento",
-    "description": "Processar pagamento do cliente #123"
-  }'
-
-# Obter tarefa específica
-curl http://localhost:3000/api/tasks/1
-```
-
-## Fluxo de Operação
-
-1. **Cliente faz requisição POST** para criar uma tarefa
-2. **API Server** valida os dados e cria a tarefa no banco de dados
-3. **API Server** publica uma mensagem na fila RabbitMQ
-4. **API** retorna imediatamente com status 201 (sem aguardar processamento)
-5. **Worker** consome a mensagem da fila em tempo real
-6. **Worker** processa a tarefa (simula 2 segundos de processamento)
-7. **Worker** atualiza o status da tarefa para "processed" no banco
-
-## Estrutura de Diretórios
+## Estrutura
 
 ```
-async_queue_api/
-├── src/
-│   ├── api/
-│   │   ├── server.js       # Servidor Express
-│   │   └── routes.js       # Rotas da API
-│   ├── worker/
-│   │   └── index.js        # Processo worker
-│   ├── models/
-│   │   └── Task.js         # Modelo de tarefas
-│   ├── db.js               # Conexão com PostgreSQL
-│   └── queue.js            # Conexão com RabbitMQ
-├── package.json
-├── .env.example
-└── README.md
+src/
+├── api/
+│   ├── server.js       # Servidor Express
+│   └── routes.js       # Endpoints
+├── worker/
+│   └── index.js        # Processador
+├── models/
+│   └── Task.js         # Task model
+├── db.js               # PostgreSQL connection
+└── queue.js            # RabbitMQ connection
+
+Docker/
+├── Dockerfile.api
+├── Dockerfile.worker
+└── .dockerignore
+
+.github/workflows/
+└── ci.yaml             # GitHub Actions
 ```
 
-## Status da Tarefa
+## Fluxo de Processamento
 
-- **pending**: Tarefa criada e aguardando processamento
-- **processed**: Tarefa processada com sucesso
+1. Cliente POST /api/tasks
+2. API valida e insere em PostgreSQL
+3. API publica em RabbitMQ
+4. API retorna 201 (não aguarda processamento)
+5. Worker consome mensagem
+6. Worker processa tarefa
+7. Worker atualiza status para "processed"
 
-## Graceful Shutdown
+## Variáveis de Ambiente
 
-Ambos os processos (API e Worker) tratam sinais de interrupção corretamente:
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=async_queue_db
+DB_USER=postgres
+DB_PASSWORD=password
 
-```bash
-# Pressione Ctrl+C para encerrar
-# Os processos vão:
-# 1. Fechar conexões com banco e fila
-# 2. Finalizar com segurança
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+RABBITMQ_USER=user
+RABBITMQ_PASSWORD=pass
+RABBITMQ_QUEUE=tasks
+
+API_PORT=3000
+NODE_ENV=development
 ```
 
-## Próximos Passos para DevOps
+## Status de Tarefa
 
-Com essa arquitetura simples, você pode aprender:
+| Status | Significado |
+|--------|------------|
+| `pending` | Criada, aguardando processamento |
+| `processed` | Processada com sucesso |
 
-- **Docker**: Criar imagens para API e Worker
-- **Docker Compose**: Orquestrar PostgreSQL, RabbitMQ, API e Worker
-- **Kubernetes**: Fazer deploy em clusters K8s
-- **CI/CD**: Criar pipelines de build e deploy
-- **Monitoramento**: Adicionar observabilidade com Prometheus e Grafana
-- **Logging**: Centralizar logs com ELK Stack
+## Tecnologias
 
-## Notas
-
-- Esta aplicação foi desenvolvida com foco em simplicidade e aprendizado
-- O worker processa uma tarefa por vez
-- As mensagens da fila são persistentes e serão reprocessadas em caso de falha
-- O banco de dados é criado automaticamente na primeira execução
-
-## Licença
-
-MIT
+- Node.js 22
+- Express
+- PostgreSQL 15
+- RabbitMQ 3.12
+- Docker
+- Docker Compose

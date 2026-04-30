@@ -1,94 +1,69 @@
-# Arquitetura da Aplicação
+# Arquitetura
 
 ## Visão Geral
 
-Esta é uma arquitetura simples baseada em padrões modernos de aplicações distribuídas, projetada especificamente para fins de aprendizado em DevOps.
+Arquitetura produtor-consumidor para processamento assíncrono de tarefas, implementando padrões de sistemas distribuídos.
 
-## Padrões Utilizados
+## Padrões
 
-### 1. Producer-Consumer Pattern
-
-A API publica mensagens na fila (Producer) e o Worker consome e processa (Consumer).
+### Producer-Consumer
 
 ```
-API → Publish → RabbitMQ Queue ← Consume ← Worker
-      ↓
-    Database
-      ↑
-    Worker atualiza status
+API (Produtor) → RabbitMQ Queue ← Worker (Consumidor)
 ```
 
-### 2. Asynchronous Processing
+A API publica mensagens de tarefa na fila RabbitMQ. O Worker consome e processa de forma independente.
 
-As requisições HTTP retornam imediatamente, enquanto o processamento acontece em background.
+### Processamento Assíncrono
 
-```
-Client
-  │
-  ├─→ [Fast] GET /tasks       → API retorna imediatamente
-  │
-  ├─→ [Fast] POST /tasks      → API cria task, publica na fila, retorna 201
-  │                              (sem aguardar processamento)
-  │
-  └─→ [Background] Worker consome e processa a task
-      └─→ Atualiza status no banco para "processed"
-```
-
-### 3. Graceful Shutdown
-
-Ambos os processos tratam sinais de interrupção corretamente.
+Requisições HTTP retornam imediatamente sem aguardar conclusão do processamento.
 
 ```
-SIGTERM/SIGINT
-    ↓
-Close connections
-    ↓
-Persist state
-    ↓
-Exit cleanly
+POST /tasks
+├─ API: Valida
+├─ API: Persiste em BD
+├─ API: Publica em fila
+└─ API: Retorna 201 (< 100ms)
+
+[Background]
+Worker: Consome → Processa → Atualiza BD
 ```
 
-## Componentes da Arquitetura
+### Graceful Shutdown
 
-### API Server (`src/api/server.js`)
+Ambos os processos tratam sinais de encerramento corretamente, fechando conexões e finalizando tarefas em progresso.
 
-- Responsável por receber requisições HTTP
-- Validar dados de entrada
-- Persistir em banco de dados
-- Publicar mensagens na fila
-- Retornar respostas imediatas
+## Componentes
 
-**Fluxo:**
+### API Server (`src/api/`)
 
-1. Request chega em POST /api/tasks
-2. Validar dados (title obrigatório)
-3. Inserir no PostgreSQL
-4. Publicar mensagem no RabbitMQ
-5. Retornar 201 Created com dados da task
+Servidor Express com endpoints:
 
-### Worker (`src/worker/index.js`)
+- `GET /api/health` - Health check
+- `GET /api/tasks` - Listar tarefas
+- `GET /api/tasks/:id` - Obter tarefa
+- `POST /api/tasks` - Criar tarefa
 
-- Consome mensagens da fila
-- Processa as tarefas
-- Atualiza status no banco
-- Trata erros e requeue
+Fluxo ao criar tarefa:
 
-**Fluxo:**
+1. Validar dados
+2. Inserir em PostgreSQL
+3. Publicar em RabbitMQ
+4. Retornar 201
 
-1. Aguardar mensagem na fila RabbitMQ
-2. Receber mensagem com dados da task
-3. Processar (simula 2 segundos)
-4. Atualizar banco com status "processed"
-5. Fazer ACK da mensagem
-6. Voltar ao passo 1
+### Worker (`src/worker/`)
+
+Processo de consumo:
+
+1. Conecta ao RabbitMQ
+2. Aguarda mensagens
+3. Processa cada tarefa
+4. Atualiza status em PostgreSQL
+5. Confirma consumo (ACK)
 
 ### Banco de Dados (`src/db.js`)
 
-- Inicializa tabela `tasks` automaticamente
-- Gerencia pool de conexões
-- Expõe interface simples para queries
-
-**Tabela tasks:**
+PostgreSQL com tabela:
 
 ```sql
 CREATE TABLE tasks (
@@ -102,201 +77,97 @@ CREATE TABLE tasks (
 )
 ```
 
-### Fila de Mensagens (`src/queue.js`)
+### Fila (`src/queue.js`)
 
-- Conecta ao RabbitMQ
-- Publica mensagens com persistência
-- Consome mensagens com ACK/NACK
-- Trata reconexão automática
+RabbitMQ com fila `tasks`:
 
-**Características:**
+- Durable: persiste entre reinicializações
+- Persistent: mensagens não se perdem
+- ACK manual: confirma processamento
+- NACK + requeue: reprocessa em erro
 
-- Fila durable (persiste entre reinicializações)
-- Mensagens persistent (não se perdem)
-- ACK manual (confirma processamento)
-- NACK com requeue (reprocessa em caso de erro)
+### Model (`src/models/Task.js`)
 
-### Modelo de Dados (`src/models/Task.js`)
+Abstração de dados com métodos CRUD:
 
-- Abstração para operações no banco
-- Métodos CRUD
-- Encapsulamento de lógica de dados
+- `create()` - Criar tarefa
+- `findById()` - Consultar por ID
+- `findAll()` - Listar todas
+- `updateStatus()` - Alterar status
+- `markAsProcessed()` - Marcar como processada
 
-**Métodos:**
-
-- `create(title, description)` - Criar nova task
-- `findById(id)` - Buscar task específica
-- `findAll()` - Listar todas tasks
-- `updateStatus(id, status)` - Atualizar status
-- `markAsProcessed(id)` - Marcar como processada
-
-## Fluxo de Dados Completo
-
-### Cenário: Criar e Processar uma Tarefa
+## Fluxo Completo
 
 ```
-1. CLIENT
-   └─→ POST /api/tasks
-       {
-         "title": "Processar Pagamento",
-         "description": "Cliente #123"
-       }
+Cliente: POST /api/tasks
+         {title: "Task", description: "Desc"}
+             │
+             ▼
+API Server:
+  ├─ Valida input
+  ├─ INSERT PostgreSQL
+  ├─ PUBLISH RabbitMQ
+  └─ Return 201 (< 100ms)
 
-2. API SERVER (src/api/routes.js)
-   ├─→ Validar input (title required)
-   ├─→ Task.create() → INSERT em PostgreSQL
-   │   └─→ Database retorna task com ID
-   ├─→ queue.publishMessage(message)
-   │   └─→ RabbitMQ recebe e armazena
-   └─→ Return 201 + dados da task
-       └─→ CLIENT recebe resposta em <100ms
+[Paralelo]
+Worker:
+  ├─ Consume RabbitMQ
+  ├─ Process (2s)
+  ├─ UPDATE PostgreSQL (status=processed)
+  └─ ACK (remove da fila)
 
-3. WORKER (src/worker/index.js) [simultâneo]
-   ├─→ queue.consumeMessages() aguardando
-   ├─→ Recebe mensagem do RabbitMQ
-   ├─→ processTask() executa por 2 segundos
-   ├─→ Task.markAsProcessed()
-   │   └─→ UPDATE status='processed' em PostgreSQL
-   ├─→ channel.ack() confirma consumo
-   └─→ Volta para aguardar próxima mensagem
-
-4. RESULTADO
-   Task criada: status = 'pending' → 'processed'
-   Processamento: assíncrono e não bloqueia API
+Timeline:
+t=0ms:    POST /tasks → 201 retornado
+t=10ms:   Worker recebe mensagem
+t=2010ms: Processamento concluído
+t=2020ms: GET /tasks/:id → status=processed
 ```
 
-## Benefícios dessa Arquitetura
+## Escalabilidade
 
-### 1. Separação de Responsabilidades
-
-- API: recebe e persistem dados
-- Worker: processa dados
-- Fila: desacopla producer e consumer
-
-### 2. Escalabilidade
-
-- Múltiplos workers podem processar simultaneamente
-- API não fica sobrecarregada
-- Banco não sofre com picos de processamento
-
-### 3. Resiliência
-
-- Fila persiste mensagens (não se perdem)
-- Worker restart automático continua processando
-- Graceful shutdown evita perda de dados
-
-### 4. Observabilidade
-
-Você pode facilmente adicionar:
-
-- Logs estruturados (JSON)
-- Métricas (Prometheus)
-- Tracing distribuído (Jaeger)
-- Alertas (PagerDuty)
-
-## Prática para DevOps
-
-Esta arquitetura é perfeita para aprender:
-
-### Docker
-
-- Criar Dockerfile para API e Worker
-- Multi-stage builds
-- Otimização de imagens
-
-### Docker Compose
-
-- Orquestrar PostgreSQL, RabbitMQ, API, Worker
-- Variáveis de ambiente
-- Networking entre containers
-- Volumes para persistência
-
-### Kubernetes
-
-- Deployments para API e Worker
-- Services para exposição
-- ConfigMaps para variáveis de ambiente
-- Secrets para credenciais
-- StatefulSets para PostgreSQL/RabbitMQ
-- Health checks (liveness, readiness)
-
-### CI/CD
-
-- Build de imagens (GitHub Actions, GitLab CI)
-- Push para registry (Docker Hub, ECR)
-- Deploy automático em K8s
-- Rollback em caso de erro
-
-### Monitoramento
-
-- Prometheus para métricas
-- Grafana para dashboards
-- ELK Stack para logs
-- Alertas baseados em thresholds
-
-## Performance Esperada
-
-### Latência da API
-
-- POST /tasks: ~50-100ms (sem I/O network)
-- GET /tasks: ~10-50ms
-
-### Throughput
-
-- API: ~100-500 requests/segundo (sem otimizações)
-- Worker: ~0.5 tasks/segundo (com processamento de 2s)
-
-### Escalabilidade
-
-- Adicionar workers: processamento cresce linearmente
-- Adicionar replicas da API: throughput cresce
-- PostgreSQL: pode ser problema com muitos workers
-
-## Limitações Conhecidas
-
-1. **Worker único**: Processa um task por vez (serial)
-2. **Sem retry automático**: Requeue manual apenas
-3. **Sem circuit breaker**: Sem proteção contra falhas em cascata
-4. **Logs simples**: Apenas console.log
-5. **Sem autenticação**: Endpoints públicos
-
-## Próximos Passos
-
-1. **Imediato**: Rodar localmente e testar
-2. **Curto prazo**: Containerizar com Docker
-3. **Médio prazo**: Orquestração com Docker Compose
-4. **Longo prazo**: Deploy em Kubernetes
-
-## Estrutura de Diretórios Explicada
+Múltiplos workers processam paralelamente:
 
 ```
-async_queue_api/
-├── src/
-│   ├── api/
-│   │   ├── server.js       # Ponto de entrada (inicializa servidor)
-│   │   └── routes.js       # Definição de rotas (endpoints)
-│   ├── worker/
-│   │   └── index.js        # Worker que consome fila
-│   ├── models/
-│   │   └── Task.js         # Abstração de dados (ORM simples)
-│   ├── db.js               # Inicialização PostgreSQL
-│   └── queue.js            # Inicialização RabbitMQ
-├── package.json            # Dependências Node.js
-├── .env.example            # Template de variáveis
-├── README.md               # Documentação principal
-├── SETUP.md                # Guia de setup
-├── ARCHITECTURE.md         # Este arquivo
-└── test-api.sh             # Script de testes
+RabbitMQ Queue
+    │
+    ├─→ Worker 1
+    ├─→ Worker 2
+    └─→ Worker N
+
+Fila distribui mensagens entre workers.
 ```
 
-## Conclusão
+## Tratamento de Erros
 
-Esta é uma arquitetura simples mas produção-ready que demonstra os conceitos fundamentais de:
+- **Worker falha**: NACK + requeue automático
+- **Conexão cai**: Reconnect automático
+- **BD indisponível**: Erro no worker, requeue
+- **Graceful shutdown**: Sinal SIGTERM finaliza operações pendentes
 
-- Arquitetura de microsserviços
-- Processamento assíncrono
-- Message queuing
-- Persistência de dados
-- Graceful shutdown
+## Persistência
 
-Perfeita para estudar DevOps e containerização! 🚀
+| Componente | Persistência                  |
+| ---------- | ----------------------------- |
+| Dados      | PostgreSQL (ACID)             |
+| Fila       | RabbitMQ durable + persistent |
+| Estado     | Sincronizado em ambos         |
+
+## Containerização
+
+| Dockerfile        | Base           | CMD            |
+| ----------------- | -------------- | -------------- |
+| Dockerfile.api    | node:22-alpine | npm start      |
+| Dockerfile.worker | node:22-alpine | npm run worker |
+
+Docker Compose orquestra com health checks e networking.
+
+CI/CD via GitHub Actions: build e push automático para Docker Hub.
+
+## Isolamento
+
+Cada serviço é independente. Falha em um não derruba os outros:
+
+- API fail: requisições falham, fila persiste
+- Worker fail: mensagens aguardam retry
+- BD fail: transações falham, requeue automático
+- RabbitMQ fail: sem perda (mensagens duram)
