@@ -43,7 +43,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v7
         with: 
-          file: ../Docker/Dockerfile.${{matrix.service-name}}
+          file: ./Docker/Dockerfile.${{matrix.service-name}}
           context: ..
           tags: "${{secrets.DOCKERHUB_USERNAME}}/async-queue-${{ matrix.service-name }}"
           push: true
