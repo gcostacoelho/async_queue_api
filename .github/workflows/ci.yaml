@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [api, worker]
+        service-name: [api, worker]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -42,8 +42,8 @@ jobs:
 
       - name: Build and push image
         uses: docker/build-push-action@v7
-        with:
-          context: .
-          target: ${{ matrix.target }}
-          tags: "${{secrets.DOCKERHUB_USERNAME}}/async-queue-${{ matrix.target }}"
+        with: 
+          file: ../Docker/Dockerfile.${{matrix.service-name}}
+          context: ..
+          tags: "${{secrets.DOCKERHUB_USERNAME}}/async-queue-${{ matrix.service-name }}"
           push: true
