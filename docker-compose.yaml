@@ -4,8 +4,8 @@ services:
     restart: unless-stopped
     build:
       context: .
-      target: api
-    image: async_queue:api
+      dockerfile: ./Docker/Dockerfile.api
+    image: async_queue-api
     ports:
       - 3000:3000
     environment:
@@ -39,8 +39,8 @@ services:
     restart: unless-stopped
     build:
       context: .
-      target: worker
-    image: async_queue:worker
+      dockerfile: ./Docker/Dockerfile.worker
+    image: async_queue-worker
     environment:
       - DB_HOST=db
       - DB_PORT=5432
@@ -60,7 +60,7 @@ services:
     networks:
       - app
 
-  # DB AND RABBITMQ
+  # DB, RABBITMQ AND ADMINER
   db:
     container_name: postgres_container
     image: postgres:18.3-alpine
