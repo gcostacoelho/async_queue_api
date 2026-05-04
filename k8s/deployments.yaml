@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: async-queue-api
+  namespace: async-queue
 spec:
   selector:
     matchLabels:
@@ -36,6 +37,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: async-queue-worker
+  namespace: async-queue
 spec:
   selector:
     matchLabels:
