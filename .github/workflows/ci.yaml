@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node JS
         uses: actions/setup-node@v6
         with:
-          node-version: 25
+          node-version: 22
 
       - run: "npm install"
 
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [api, worker]
+        service-name: [api, worker]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -39,11 +39,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
+    
       - name: Build and push image
         uses: docker/build-push-action@v7
-        with:
+        with: 
+          file: ./Docker/Dockerfile.${{matrix.service-name}}
           context: .
-          target: ${{ matrix.target }}
-          tags: "${{secrets.DOCKERHUB_USERNAME}}/async-queue-${{ matrix.target }}"
+          tags: "${{secrets.DOCKERHUB_USERNAME}}/async-queue-${{ matrix.service-name }}"
           push: true
