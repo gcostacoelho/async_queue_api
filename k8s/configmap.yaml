@@ -4,10 +4,10 @@ metadata:
   name: async-queue-api-configmap
   namespace: async-queue
 data:
-  # DB_HOST: db - intern SVC URL
+  DB_HOST: postgres-database-service.database.svc.cluster.local # - intern SVC URL
   DB_PORT: "5432"
   DB_NAME: async_queue_db
-  # RABBITMQ_HOST: rabbit - intern SVC URL
+  RABBITMQ_HOST: rabbit.svc.cluster.local # - intern SVC URL
   RABBITMQ_PORT: "5672"
   RABBITMQ_QUEUE: tasks
   API_PORT: "3000"
@@ -21,9 +21,9 @@ metadata:
   name: async-queue-worker-configmap
   namespace: async-queue
 data:
-  DB_HOST: db # - intern SVC URL
+  DB_HOST: postgres-database-service.database.svc.cluster.local # - intern SVC URL
   DB_PORT: "5432"
   DB_NAME: async_queue_db
-  RABBITMQ_HOST: rabbit # - intern SVC URL
+  RABBITMQ_HOST: rabbit.svc.cluster.local # - intern SVC URL
   RABBITMQ_PORT: "5672"
   RABBITMQ_QUEUE: tasks
