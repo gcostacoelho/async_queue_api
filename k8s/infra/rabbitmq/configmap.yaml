@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbit-configmap
+  namespace: message-broker
+data:
+  rabbimq.conf: |
+    management.load_definitions = /etc/rabbitmq/definitions.json
+    loopback_users.guest = false
