@@ -4,6 +4,40 @@ metadata:
   name: rabbit-configmap
   namespace: message-broker
 data:
-  rabbimq.conf: |
+  definitions.json: |
+    {
+      "users": [
+        {
+          "name": "user",
+          "password": "pass",
+          "tags": "administrator"
+        }
+      ],
+      "vhosts": [
+        {
+          "name": "/"
+        }
+      ],
+      "permissions": [
+        {
+          "user": "user",
+          "vhost": "/",
+          "configure": ".*",
+          "write": ".*",
+          "read": ".*"
+        }
+      ],
+      "queues": [
+        {
+          "name": "tasks",
+          "vhost": "/",
+          "durable": true,
+          "auto_delete": false,
+          "arguments": {}
+        }
+      ]
+    }
+
+  rabbitmq.conf: |
     management.load_definitions = /etc/rabbitmq/definitions.json
     loopback_users.guest = false
