@@ -17,6 +17,7 @@ infra: namespaces db rabbit
 db:
 	@echo "🗄️ Deployando PostgreSQL..."
 	@kubectl apply -f infra/db/volumes/
+	@kubectl apply -f infra/db/configmap.yaml
 	@kubectl apply -f infra/db/secret.yaml
 	@kubectl apply -f infra/db/service.yaml
 	@kubectl apply -f infra/db/deployment.yaml

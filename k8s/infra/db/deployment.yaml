@@ -33,8 +33,18 @@ spec:
                   name: database-secret
                   key: password
           ports:
-          - containerPort: 5432
+            - containerPort: 5432
+
+          volumeMounts:
+            - name:  postgres-configmap
+              mountPath: /docker-entrypoint-initdb.d/init.sql
+              subPath: init.sql
+
       volumes:
-        - name:  postgres-data
+        - name: postgres-data
           persistentVolumeClaim:
             claimName: postgres-pvc
+        
+        - name: postgres-configmap
+          configMap:
+            name: postgres-configmap
