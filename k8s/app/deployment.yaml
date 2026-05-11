@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: async-queue-api
+  namespace: async-queue
+spec:
+  selector:
+    matchLabels:
+      app: async-queue-api
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: async-queue-api
+    spec:
+      containers:
+      - name: async-queue-api
+        image: gcostacoelho/async-queue-api
+        resources:
+          limits:
+            memory: 128Mi
+            cpu: 500m
+          requests:
+            memory: 128Mi
+            cpu: 200m
+        ports:
+        - containerPort: 3000
+        envFrom:
+          - configMapRef:
+              name: async-queue-api-configmap
+          - secretRef:
+              name: app-secrets

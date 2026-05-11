@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-database
+  namespace: database
+spec:
+  selector:
+    matchLabels:
+      app: postgres-database
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres-database
+    spec:
+      containers:
+        - name: postgres-database
+          image: postgres:18.3-alpine
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+            requests:
+              memory: "128Mi"
+              cpu: 200m
+          env:
+            - name: POSTGRES_USER
+              value: user
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: password
+          ports:
+            - containerPort: 5432
+
+          volumeMounts:
+            - name:  postgres-configmap
+              mountPath: /docker-entrypoint-initdb.d/init.sql
+              subPath: init.sql
+            
+            - name: postgres-data
+              mountPath: /var/lib/postgresql
+
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+        
+        - name: postgres-configmap
+          configMap:
+            name: postgres-configmap
