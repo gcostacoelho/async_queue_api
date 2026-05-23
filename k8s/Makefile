@@ -1,8 +1,46 @@
-.PHONY: all infra db rabbit app clean status
+.PHONY: all infra db rabbit app update update-infra update-db update-rabbit update-app clean status
 
 # Deploy completo em ordem: namespace → infra (db + rabbit) → app
 all: namespaces infra app
 	@echo "✅ Deploy completo concluído!"
+
+# Atualizar tudo se houver mudanças nos YAML
+update: update-infra update-app
+	@echo "✅ Atualização completa concluída!"
+
+# Atualizar infraestrutura
+update-infra: update-db update-rabbit
+	@echo "✅ Infraestrutura atualizada"
+
+# Atualizar PostgreSQL
+update-db:
+	@echo "🗄️ Atualizando PostgreSQL..."
+	@kubectl apply -f infra/db/volumes/
+	@kubectl apply -f infra/db/configmap.yaml
+	@kubectl apply -f infra/db/secret.yaml
+	@kubectl apply -f infra/db/service.yaml
+	@kubectl apply -f infra/db/deployment.yaml
+	@echo "✅ PostgreSQL atualizado"
+
+# Atualizar RabbitMQ
+update-rabbit:
+	@echo "🐰 Atualizando RabbitMQ..."
+	@kubectl apply -f infra/rabbitmq/volumes/pv.yaml
+	@kubectl apply -f infra/rabbitmq/volumes/pvc.yaml
+	@kubectl apply -f infra/rabbitmq/configmap.yaml
+	@kubectl apply -f infra/rabbitmq/service.yaml
+	@kubectl apply -f infra/rabbitmq/deployment.yaml
+	@echo "✅ RabbitMQ atualizado"
+
+# Atualizar aplicação (API + Worker)
+update-app:
+	@echo "🚀 Atualizando aplicação..."
+	@kubectl apply -f app/configmap.yaml
+	@kubectl apply -f app/secret.yaml
+	@kubectl apply -f app/service.yaml
+	@kubectl apply -f app/deployment.yaml
+	@kubectl apply -f app/worker/deployment.yaml
+	@echo "✅ Aplicação atualizada"
 
 # Criar namespace
 namespaces:

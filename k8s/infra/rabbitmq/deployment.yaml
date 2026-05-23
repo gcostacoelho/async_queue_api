@@ -15,13 +15,13 @@ spec:
       containers:
         - name: rabbit-broker
           image: rabbitmq:4.3.0-management-alpine
-          # resources:
-          #   limits:
-          #     memory: "512Mi"
-          #     cpu: "500m"
-          #   requests:
-          #     memory: 1Gi
-          #     cpu: 200m 
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 1Gi
+              cpu: 500m
           volumeMounts:
             - name:  rabbit-configmap
               mountPath:  /etc/rabbitmq/definitions.json
@@ -33,7 +33,26 @@ spec:
             
             - name: rabbitmq-data
               mountPath: /var/lib/rabbitmq
-
+          
+          livenessProbe:
+            exec:
+              command:
+               - rabbitmq-diagnostics
+               - ping
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          
+          readinessProbe:
+            exec:
+              command:
+                - rabbitmq-diagnostics
+                - check_port_connectivity
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
           ports:
             - containerPort: 5672
             - containerPort: 15672
