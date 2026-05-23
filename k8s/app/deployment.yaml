@@ -23,6 +23,20 @@ spec:
           requests:
             memory: 128Mi
             cpu: 200m
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 15
+          failureThreshold: 3
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 20
+          failureThreshold: 5
+          periodSeconds: 5
         ports:
         - containerPort: 3000
         envFrom:
